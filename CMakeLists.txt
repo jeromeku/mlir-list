@@ -4,7 +4,7 @@ project(listproject-dialect LANGUAGES CXX C)
 set(CMAKE_BUILD_WITH_INSTALL_NAME_DIR ON)
 
 set(CMAKE_CXX_STANDARD 17 CACHE STRING "C++ standard to conform to")
-
+message(STATUS "CMAKE_SOURCE_DIR: ${CMAKE_SOURCE_DIR} CMAKE_CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   find_package(MLIR REQUIRED CONFIG)
 
@@ -21,6 +21,7 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
 
   list(APPEND CMAKE_MODULE_PATH "${MLIR_CMAKE_DIR}")
   list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
+  message(STATUS "MLIR_CMAKE_DIR: ${MLIR_CMAKE_DIR} ${MLIR_BINARY_DIR}")
 
   include(TableGen)
   include(AddLLVM)
@@ -58,5 +59,6 @@ if(MLIR_ENABLE_BINDINGS_PYTHON)
   set(MLIR_BINDINGS_PYTHON_INSTALL_PREFIX "python_packages/listproject/mlir_listproject" CACHE STRING "" FORCE)
   add_subdirectory(python)
 endif()
+
 add_subdirectory(test)
 add_subdirectory(listproject-opt)
