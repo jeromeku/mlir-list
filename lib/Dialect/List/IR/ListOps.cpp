@@ -111,12 +111,12 @@ LogicalResult MapOp::verify() {
   // TODO 1. Get the result
   auto mapResult = getResult();
 
-  LLVM_DEBUG(dbgs() << "Verifying MapOp!");
+  LLVM_DEBUG(dbgs() << "Verifying MapOp!" << "\n");
 
   // TODO 2. Get the ElementType of the Type of the result
   Type mapResultElementType = mapResult.getType().getElementType();
 
-  LLVM_DEBUG(dbgs() << "Map Result ElementType: " << mapResultElementType);
+  LLVM_DEBUG(dbgs() << "Map Result ElementType: " << mapResultElementType << "\n");
 
   // 3. Get the yield op
   auto yieldOp = dyn_cast<list::YieldOp>(this->getBody().front().back());
@@ -125,7 +125,7 @@ LogicalResult MapOp::verify() {
   // TODO 4. get the type of value of the yield op
   Type yieldedType = yieldOp.getValue().getType();
 
-  LLVM_DEBUG(dbgs() << "yieldedType: " << yieldedType);
+  LLVM_DEBUG(dbgs() << "yieldedType: " << yieldedType << "\n");
 
   // 5. Check and emit an error if the types does not match
   if (mapResultElementType != yieldedType)
