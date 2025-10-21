@@ -24,11 +24,18 @@
 #include "ListProject/Dialect/List/IR/ListDialect.h"
 #include "ListProject/Dialect/List/IR/ListTypes.h"
 
+#include "llvm/Support/Debug.h"
+
+
 #define GET_OP_CLASSES
 #include "ListProject/Dialect/List/IR/ListOps.cpp.inc"
 
+
+#define DEBUG_TYPE "list-ops"
+
 using namespace mlir;
 using namespace list;
+using llvm::dbgs;
 
 //===----------------------------------------------------------------------===//
 // MapOp
@@ -102,17 +109,23 @@ LogicalResult MapOp::verify() {
   // as the element type of the result list
 
   // TODO 1. Get the result
-  auto mapResult = TODO!!!!TODO;
+  auto mapResult = getResult();
+
+  LLVM_DEBUG(dbgs() << "Verifying MapOp!");
 
   // TODO 2. Get the ElementType of the Type of the result
-  Type mapResultElementType = mapResult.TODO!!! Get type of a Value!!!.getElementType();
+  Type mapResultElementType = mapResult.getType().getElementType();
+
+  LLVM_DEBUG(dbgs() << "Map Result ElementType: " << mapResultElementType);
 
   // 3. Get the yield op
   auto yieldOp = dyn_cast<list::YieldOp>(this->getBody().front().back());
   assert(yieldOp);
 
   // TODO 4. get the type of value of the yield op
-  Type yieldedType = TODO!!!TODO;
+  Type yieldedType = yieldOp.getValue().getType();
+
+  LLVM_DEBUG(dbgs() << "yieldedType: " << yieldedType);
 
   // 5. Check and emit an error if the types does not match
   if (mapResultElementType != yieldedType)
@@ -122,4 +135,3 @@ LogicalResult MapOp::verify() {
                << yieldOp.getValue().getType() << ")";
   return success();
 }
-
