@@ -6,11 +6,19 @@
 //
 //===----------------------------------------------------------------------===//
 #include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Rewrite/FrozenRewritePatternSet.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 
 #include "ListProject/Dialect/List/Transforms/ListPasses.h"
+#include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/SmallVector.h"
+#include "llvm/Support/Debug.h"
+
+#define DEBUG_TYPE "list-pass"
+
+using llvm::dbgs;
 
 namespace mlir::list {
 #define GEN_PASS_DEF_LISTREMOVESOMEFOO
@@ -26,21 +34,33 @@ public:
     // Your pass code here
     // ======================================================
     ModuleOp moduleOp = getOperation();
+    LLVM_DEBUG(dbgs() << __FILE_NAME__ << ":" << __LINE__ << " " << moduleOp->getName() << "\n");
+    llvm::SmallVector<Operation*> dead_ops;
 
-    // 1. Walk on all list.foo ops
-    REMOVE_ME!!! Note that we use a walker here !!!REMOVE_ME
-    moduleOp->walk([&](list::FooOp fooOp) {
-      // 2. TODO check if the op as a "useless" attribute
-      if (TODO!!!!TODO) {
-        // 3. TODO replace all uses with the op input
-        TODO!!!!TODO
-
-        // 4. erase op
-        fooOp.erase();
+    moduleOp->walk([&](list::FooOp op) {
+      if(op->hasAttrOfType<UnitAttr>("useless")){
+        op->getResult(0).replaceAllUsesWith(op.getInput());
+        dead_ops.push_back(op);
       }
     });
-    // ======================================================
+    for(Operation *op : dead_ops){
+      op->erase();
+    }
+
   }
 };
 } // namespace
 } // namespace mlir::list
+      // 2. TODO check if the op as a "useless" attribute
+      // for(auto indexedVal : llvm::enumerate(fooOp->getAttrs())){
+      //   int i = indexedVal.index();
+      //   auto val = indexedVal.value();
+      //   LLVM_DEBUG(dbgs() << "attr " << i << ": " << val.getName() << " " << val.getValue() << "\n");
+      //   if(val.getName() == "useless"){
+      //     auto result = fooOp->getResult(0);
+      //     LLVM_DEBUG(dbgs() << "Replacing result with input\n");
+      //     result.replaceAllUsesWith(fooOp.getInput());
+      //     LLVM_DEBUG(dbgs() << "Erasing op: " << fooOp->getName() << "\n");
+      //     fooOp.erase();
+      //   }
+      // }
