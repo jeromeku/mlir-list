@@ -13,6 +13,7 @@
 
 #include "ListProject/Conversion/ListToStandard/ListToStandard.h"
 
+#include "ListProject/Dialect/List/IR/ListTypes.h"
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
 #include "mlir/Dialect/SCF/IR/SCF.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
@@ -33,7 +34,23 @@ using namespace mlir;
 using namespace mlir::list;
 
 namespace {
+class ListToStandardTypeConverter : public TypeConverter {
+ public:
+  ListToStandardTypeConverter(MLIRContext *ctx) {
+    addConversion([](Type type) { return type; });
+    addConversion([](ListType type) -> Type {
+      return RankedTensorType::get({ShapedType::kDynamic}, type.getElementType());
+    });
 
+    // We don't include any custom materialization hooks because this lowering
+    // is all done in a single pass. The dialect conversion framework works by
+    // resolving intermediate (mid-pass) type conflicts by inserting
+    // unrealized_conversion_cast ops, and only converting those to custom
+    // materializations if they persist at the end of the pass. In our case,
+    // we'd only need to use custom materializations if we split this lowering
+    // across multiple passes.
+  }
+};
 // Convert a !list.list<> to tensor<>
 Type convertListType(Type type) {
   if (auto listType = dyn_cast<ListType>(type))
@@ -80,14 +97,12 @@ class ListLengthLowering : public OpConversionPattern<list::LengthOp> {
                   ConversionPatternRewriter &rewriter) const override {
     // 1. Get the lowered list, so a tensor
     Value tensor = adaptor.getList();
-
     // 2. TODO create a tensor.dim op to extract the size of dim 0
     // Clue: You may need to create a constant with value 0 before
-    TODO!!!TODO
-
+    auto c0 = rewriter.create<arith::ConstantIndexOp>(op.getLoc(), 0).getResult();
+    auto length = rewriter.create<tensor::DimOp>(op.getLoc(), tensor, c0)->getResult(0);
     // 3. TODO replace the op by the result of the tensor.dim
-    TODO!!!!TODO
-
+    rewriter.replaceOp(op, length);
     return success();
   }
 };
@@ -106,6 +121,7 @@ class ListMapLowering : public OpConversionPattern<list::MapOp> {
     auto dimSize = rewriter.create<tensor::DimOp>
       (op.getLoc(), adaptor.getList(), c0).getResult();
     auto resultTensorType = convertListType(op.getResult().getType());
+    auto resultTensorT2 = typeConverter->convertType(op.getResult().getType());
 
     SmallVector<OpFoldResult> resultTensorShape = {dimSize};
     auto emptyResult = rewriter.create<tensor::EmptyOp>(op.getLoc(), resultTensorShape,
@@ -131,28 +147,38 @@ class ListMapLowering : public OpConversionPattern<list::MapOp> {
 };
 } // namespace
 
-void mlir::populateListToStdConversionPatterns(RewritePatternSet &patterns) {
-  REMOVE_ME!!! By experience, if your pattern seems no to be applied, !!!REMOVE_ME 
-  REMOVE_ME!!! check that it has been added here                      !!!REMOVE_ME
-  patterns.add<
-      ListRangeLowering,
-      ListLengthLowering,
-      ListMapLowering>(patterns.getContext());
-}
+// void mlir::populateListToStdConversionPatterns(RewritePatternSet &patterns) {
+//   // REMOVE_ME!!! By experience, if your pattern seems no to be applied, !!!REMOVE_ME 
+//   // REMOVE_ME!!! check that it has been added here                      !!!REMOVE_ME
+//   MLIRContext *context = patterns.getContext();
+    
+//   patterns.add<
+//       ListRangeLowering,
+//       ListLengthLowering,
+//       ListMapLowering>(typeConverter, context);
+// }
 
 namespace {
 class LowerList : public impl::LowerListPassBase<LowerList> {
-  REMOVE_ME!!! Like other passes, entry point is runOnOperation !!!REMOVE_ME
+  // REMOVE_ME!!! Like other passes, entry point is runOnOperation !!!REMOVE_ME
   void runOnOperation() override {
-    RewritePatternSet patterns(&getContext());
-    populateListToStdConversionPatterns(patterns);
+    auto *module = getOperation();
+    MLIRContext *context = &getContext();
+    RewritePatternSet patterns(context);
+    ListToStandardTypeConverter typeConverter(context);
+    patterns.add<
+      ListRangeLowering,
+      ListLengthLowering,
+      ListMapLowering>(typeConverter, context);
+    // populateListToStdConversionPatterns(patterns);
     
-    REMOVE_ME!!! No list op should remain, so mark the dialect as illegal !!!REMOVE_ME
+    // REMOVE_ME!!! No list op should remain, so mark the dialect as illegal !!!REMOVE_ME
     ConversionTarget target(getContext());
     target.addLegalDialect<arith::ArithDialect,
                            tensor::TensorDialect,
                            scf::SCFDialect>();
     target.addIllegalDialect<list::ListDialect>();
+    
     if (failed(applyPartialConversion(getOperation(), target,
                                    std::move(patterns))))
       signalPassFailure();
